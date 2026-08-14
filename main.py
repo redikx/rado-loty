@@ -1,24 +1,18 @@
 import os
 import sys
+from datetime import datetime, timedelta
+
 import requests
 from fast_flights import FlightQuery, Passengers, create_query, get_flights
 
-# ---------------------------------------------------------------------------
-# CONFIGURATION - Ustaw swoje trasy i budżet
-# ---------------------------------------------------------------------------
-TARGET_ROUTES = [
-    {
-        "from": "LUX",          # Kod lotniska wylotu (np. LUX, HHN, CRL, BRU, WAW)
-        "to": "BKK",            # Kod lotniska docelowego
-        "date": "2027-01-15",   # Data wylotu (YYYY-MM-DD)
-        "max_price": 600,       # Prog, ponizej ktorego chcesz alert
-    }
-]
+import routes_store
+
 CURRENCY = "EUR"
-# ---------------------------------------------------------------------------
 
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
+
+DATE_FORMAT = "%Y-%m-%d"
 
 
 def send_telegram_msg(message):
@@ -38,12 +32,18 @@ def send_telegram_msg(message):
         print(f"Telegram odrzucil wiadomosc: {response.status_code} {response.text}")
 
 
-def check_route(route):
-    """Zwraca najtanszy lot dla trasy albo None."""
+def _date_range(date_from, date_to):
+    start = datetime.strptime(date_from, DATE_FORMAT)
+    end = datetime.strptime(date_to, DATE_FORMAT)
+    days = (end - start).days
+    return [(start + timedelta(days=i)).strftime(DATE_FORMAT) for i in range(days + 1)]
+
+
+def _cheapest_for_date(route, date):
     query = create_query(
         flights=[
             FlightQuery(
-                date=route["date"],
+                date=date,
                 from_airport=route["from"],
                 to_airport=route["to"],
             )
@@ -63,30 +63,63 @@ def check_route(route):
     return min(results, key=lambda f: f.price)
 
 
+def check_route(route):
+    """Zwraca (data, najtanszy_lot) dla najlepszej ceny w calym zakresie dat, albo None."""
+    best_date = None
+    best_flight = None
+    any_success = False
+
+    for date in _date_range(route["date_from"], route["date_to"]):
+        try:
+            flight = _cheapest_for_date(route, date)
+            any_success = True
+        except Exception as e:
+            print(f"Blad podczas sprawdzania dnia {date}: {type(e).__name__}: {e}")
+            continue
+
+        if flight is None:
+            continue
+        if best_flight is None or flight.price < best_flight.price:
+            best_date = date
+            best_flight = flight
+
+    if not any_success:
+        raise RuntimeError(
+            f"Wszystkie dni w zakresie {route['date_from']}..{route['date_to']} zawiodly."
+        )
+
+    if best_flight is None:
+        return None
+    return best_date, best_flight
+
+
 def check_prices():
     alerts = []
     failures = []
 
-    for route in TARGET_ROUTES:
+    for route in routes_store.load_routes():
         label = f"{route['from']}-{route['to']}"
         try:
-            print(f"Sprawdzam trase: {route['from']} -> {route['to']} na dzien {route['date']}...")
+            print(
+                f"Sprawdzam trase: {route['from']} -> {route['to']} "
+                f"w okresie {route['date_from']}..{route['date_to']}..."
+            )
 
-            cheapest = check_route(route)
-            if cheapest is None:
+            result = check_route(route)
+            if result is None:
                 print("Nie znaleziono lotow dla tej trasy.")
                 continue
 
-            # price jest teraz liczba calkowita - zadnego parsowania stringow
+            best_date, cheapest = result
             price = cheapest.price
             airlines = ", ".join(cheapest.airlines) if cheapest.airlines else "?"
-            print(f"Najnizsza znaleziona cena: {price} {CURRENCY} ({airlines})")
+            print(f"Najnizsza znaleziona cena: {price} {CURRENCY} ({airlines}) w dniu {best_date}")
 
             if price <= route["max_price"]:
                 msg = (
-                    f"\u2708\ufe0f *OKAZJA LOTNICZA!*\n\n"
+                    f"✈️ *OKAZJA LOTNICZA!*\n\n"
                     f"*Trasa:* {route['from']} -> {route['to']}\n"
-                    f"*Data:* {route['date']}\n"
+                    f"*Data:* {best_date}\n"
                     f"*Przewoznik:* {airlines}\n"
                     f"*Cena:* {price} {CURRENCY} (prog: {route['max_price']} {CURRENCY})\n"
                     f"[Otworz Google Flights](https://www.google.com/travel/flights)"
