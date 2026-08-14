@@ -1,0 +1,32 @@
+name: Flight Price Tracker
+
+on:
+  schedule:
+    # Uruchamia skrypt codziennie o 08:00 rano UTC
+    - cron: '0 8 * * *'
+  # Pozwala na ręczne uruchomienie skryptu z zakładki Actions
+  workflow_dispatch:
+
+jobs:
+  check-flights:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Pobieranie kodu z repozytorium
+      uses: actions/checkout@v4
+
+    - name: Konfiguracja Pythona
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
+    - name: Instalacja zależności
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Uruchomienie skryptu
+      env:
+        TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+        TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+      run: python main.py
