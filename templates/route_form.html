@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block content %}
+  <h2>{{ action }} trasę</h2>
+  <form method="post">
+    <label>Lotnisko wylotu (kod IATA)
+      <input type="text" name="from" value="{{ route.from }}" maxlength="3">
+    </label>
+    {% if errors.from %}<div class="error">{{ errors.from }}</div>{% endif %}
+
+    <label>Lotnisko docelowe (kod IATA)
+      <input type="text" name="to" value="{{ route.to }}" maxlength="3">
+    </label>
+    {% if errors.to %}<div class="error">{{ errors.to }}</div>{% endif %}
+
+    <label>Data początkowa (YYYY-MM-DD)
+      <input type="text" name="date_from" value="{{ route.date_from }}">
+    </label>
+    {% if errors.date_from %}<div class="error">{{ errors.date_from }}</div>{% endif %}
+
+    <label>Data końcowa (YYYY-MM-DD)
+      <input type="text" name="date_to" value="{{ route.date_to }}">
+    </label>
+    {% if errors.date_to %}<div class="error">{{ errors.date_to }}</div>{% endif %}
+
+    <label>Próg cenowy
+      <input type="text" name="max_price" value="{{ route.max_price }}">
+    </label>
+    {% if errors.max_price %}<div class="error">{{ errors.max_price }}</div>{% endif %}
+
+    <div class="actions">
+      <button type="submit">{{ action }}</button>
+      <a href="{{ url_for('routes_list') }}">Anuluj</a>
+    </div>
+  </form>
+{% endblock %}
