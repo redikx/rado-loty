@@ -1,3 +1,2 @@
-fast-flights
-requests
-typing_extensions
+fast-flights==3.0.2
+requests>=2.31
