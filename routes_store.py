@@ -18,9 +18,11 @@ def load_routes():
 
 
 def save_routes(routes):
-    with open(ROUTES_FILE, "w", encoding="utf-8") as f:
+    tmp_path = ROUTES_FILE + ".tmp"
+    with open(tmp_path, "w", encoding="utf-8") as f:
         json.dump(routes, f, indent=2, ensure_ascii=False)
         f.write("\n")
+    os.replace(tmp_path, ROUTES_FILE)
 
 
 def _parse_date(value):

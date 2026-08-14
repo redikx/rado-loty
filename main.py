@@ -98,8 +98,8 @@ def check_prices():
     failures = []
 
     for route in routes_store.load_routes():
-        label = f"{route['from']}-{route['to']}"
         try:
+            label = f"{route.get('from', '?')}-{route.get('to', '?')}"
             print(
                 f"Sprawdzam trase: {route['from']} -> {route['to']} "
                 f"w okresie {route['date_from']}..{route['date_to']}..."
