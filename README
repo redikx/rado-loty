@@ -1,1 +1,45 @@
+# Rado Loty — Flight Price Tracker
 
+Codzienny tracker cen lotów: sprawdza zdefiniowane trasy na Google Flights
+i wysyła alert na Telegram, gdy najlepsza cena znaleziona w danym okresie
+spadnie poniżej ustawionego progu.
+
+## Konfiguracja tras
+
+Trasy są przechowywane w `routes.json` i zarządzane przez lokalny interfejs
+webowy:
+
+```bash
+pip install -r requirements.txt
+python app.py
+```
+
+Otwórz `http://127.0.0.1:5000` w przeglądarce, dodaj/edytuj/usuń trasy
+(lotnisko wylotu, lotnisko docelowe, zakres dat, próg cenowy). Zmiany trafiają
+od razu do `routes.json` — po zakończeniu edycji zacommituj i wypushuj plik,
+żeby zaczął go używać workflow uruchamiany na GitHub Actions:
+
+```bash
+git add routes.json
+git commit -m "Update tracked routes"
+git push
+```
+
+Uwaga: im dłuższy zakres dat dla trasy, tym więcej zapytań do Google Flights
+(jedno na każdy dzień) — dłuższy czas działania i większe ryzyko throttlingu.
+
+## Uruchamianie trackera
+
+Tracker (`main.py`) jest uruchamiany automatycznie codziennie o 08:00 UTC
+przez GitHub Actions (`.github/workflows/tracker.yml`), a także ręcznie z
+zakładki Actions na GitHubie. Wymaga sekretów repozytorium:
+`TELEGRAM_TOKEN` i `TELEGRAM_CHAT_ID`.
+
+Można go też uruchomić lokalnie:
+
+```bash
+python main.py
+```
+
+Bez ustawionych zmiennych `TELEGRAM_TOKEN`/`TELEGRAM_CHAT_ID` alerty są
+wypisywane w konsoli zamiast wysyłane na Telegram.
